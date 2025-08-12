@@ -46,4 +46,4 @@ jobs:
       run: dir Friday/nupkg
 
     - name: Publish NuGet package
-      run: dotnet nuget push Friday/nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      run: dotnet nuget push Friday/nupkg/FridayMediator.${{ steps.version.outputs.new_version }}.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
