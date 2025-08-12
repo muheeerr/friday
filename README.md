@@ -45,4 +45,4 @@ MIT
 
 ## Links
 - [NuGet](https://www.nuget.org/packages/FridayMediator)
-- [GitHub](https://github.com/your/repo)
+- [GitHub](https://github.com/muheeerr/Friday)
