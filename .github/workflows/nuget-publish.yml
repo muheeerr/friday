@@ -1,3 +1,4 @@
+
 name: Build and Publish NuGet
 
 on:
@@ -14,6 +15,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Install jq
+      shell: bash
+      run: choco install jq -y
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -22,28 +27,32 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore Friday/Friday.csproj
 
-    - name: Build
-      run: dotnet build Friday/Friday.csproj --configuration Release --no-restore
-
-    - name: Read and increment version
-      id: version
+    - name: Get latest NuGet version
+      id: get_version
       shell: bash
       run: |
-        VERSION_FILE="./Friday/VERSION"
-        VERSION=$(cat $VERSION_FILE)
-        echo "Current version: $VERSION"
-        # Increment patch version
-        IFS='.' read -r major minor patch <<< "$VERSION"
-        patch=$((patch+1))
-        NEW_VERSION="$major.$minor.$patch"
-        echo $NEW_VERSION > $VERSION_FILE
+        PACKAGE_NAME="FridayMediator"
+        # Get latest version from NuGet
+        LATEST=$(curl -s https://api.nuget.org/v3-flatcontainer/${PACKAGE_NAME,,}/index.json | jq -r '.versions[-1]')
+        echo "Latest version on NuGet: $LATEST"
+
+        # Increment patch
+        IFS='.' read -r major minor patch <<< "$LATEST"
+        NEW_VERSION="$major.$minor.$((patch+1))"
+        echo "New version: $NEW_VERSION"
+
         echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
+    - name: Build project
+      run: dotnet build Friday/Friday.csproj --configuration Release --no-restore
+
     - name: Pack NuGet package
-      run: dotnet pack Friday/Friday.csproj --configuration Release --no-build --output Friday/nupkg /p:PackageVersion=${{ steps.version.outputs.new_version }}
+      run: dotnet pack Friday/Friday.csproj --configuration Release --no-build --output Friday/nupkg /p:Version=${{ steps.get_version.outputs.new_version }}
 
     - name: List nupkg files
       run: dir Friday/nupkg
 
     - name: Publish NuGet package
-      run: dotnet nuget push Friday/nupkg/FridayMediator.${{ steps.version.outputs.new_version }}.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      shell: bash
+      run: |
+        dotnet nuget push Friday/nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
