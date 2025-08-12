@@ -51,7 +51,7 @@ public class Friday : IFriday
         var handler = _serviceProvider.GetRequiredService(handlerType);
 
         var method = handlerType.GetMethod("Handle")!;
-        
+
         // Use Compiled Delegate (Caching)
         // Instead of using reflection every time, the method uses a ConcurrentDictionary to cache a compiled delegate that can invoke the Handle method:
         var invoker = (Func<object, object, CancellationToken, Task<TResponse>>)_handlerCache.GetOrAdd(handlerType, _ =>
@@ -131,7 +131,7 @@ public class Friday : IFriday
                     _logger.LogError(ex, "Error occurred in handler {HandlerType} for notification {NotificationType}", handlerInstance?.GetType().Name,
                         notificationType.Name);
                 }
-            }, cancellationToken);
+            }, cancellationToken);//
 
             if (!fireAndForget)
                 tasks.Add(handlerTask);
