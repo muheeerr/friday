@@ -32,10 +32,10 @@ jobs:
       shell: bash
       run: |
         PACKAGE_NAME="FridayMediator"
-        # Get latest version from NuGet
-        RESPONSE=$(curl -s -w "%{http_code}" https://api.nuget.org/v3-flatcontainer/fridaymediator/index.json)
-        BODY=$(echo "$RESPONSE" | head -c -3)
-        STATUS=$(echo "$RESPONSE" | tail -c 3)
+        # Get latest version from NuGet (robust way)
+        HTTP_RESPONSE=$(curl -s -w "HTTPSTATUS:%{http_code}" https://api.nuget.org/v3-flatcontainer/fridaymediator/index.json)
+        BODY=$(echo "$HTTP_RESPONSE" | sed -e 's/HTTPSTATUS\:.*//g')
+        STATUS=$(echo "$HTTP_RESPONSE" | tr -d '\n' | sed -e 's/.*HTTPSTATUS://')
         if [ "$STATUS" = "200" ]; then
           LATEST=$(echo "$BODY" | jq -r '.versions[-1]')
           if [ "$LATEST" = "null" ] || [ -z "$LATEST" ]; then
