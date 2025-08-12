@@ -1,3 +1,4 @@
+
 name: Build and Publish NuGet
 
 on:
@@ -14,6 +15,10 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Install jq
+      shell: bash
+      run: choco install jq -y
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -22,28 +27,46 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore Friday/Friday.csproj
 
-    - name: Build
-      run: dotnet build Friday/Friday.csproj --configuration Release --no-restore
-
-    - name: Read and increment version
-      id: version
+    - name: Get latest NuGet version
+      id: get_version
       shell: bash
       run: |
-        VERSION_FILE="./Friday/VERSION"
-        VERSION=$(cat $VERSION_FILE)
-        echo "Current version: $VERSION"
-        # Increment patch version
-        IFS='.' read -r major minor patch <<< "$VERSION"
-        patch=$((patch+1))
-        NEW_VERSION="$major.$minor.$patch"
-        echo $NEW_VERSION > $VERSION_FILE
+        PACKAGE_NAME="FridayMediator"
+        # Get latest version from NuGet
+        RESPONSE=$(curl -s -w "%{http_code}" https://api.nuget.org/v3-flatcontainer/${PACKAGE_NAME,,}/index.json)
+        BODY=$(echo "$RESPONSE" | head -c -3)
+        STATUS=$(echo "$RESPONSE" | tail -c 3)
+        if [ "$STATUS" = "200" ]; then
+          LATEST=$(echo "$BODY" | jq -r '.versions[-1]')
+          if [ "$LATEST" = "null" ] || [ -z "$LATEST" ]; then
+            NEW_VERSION="1.0.0"
+          else
+            IFS='.' read -r major minor patch <<< "$LATEST"
+            NEW_VERSION="$major.$minor.$((patch+1))"
+          fi
+        else
+          NEW_VERSION="1.0.0"
+        fi
+        echo "New version: $NEW_VERSION"
         echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
+    - name: Build project
+      run: dotnet build Friday/Friday.csproj --configuration Release --no-restore
+
     - name: Pack NuGet package
-      run: dotnet pack Friday/Friday.csproj --configuration Release --no-build --output Friday/nupkg /p:PackageVersion=${{ steps.version.outputs.new_version }}
+      run: dotnet pack Friday/Friday.csproj --configuration Release --no-build --output Friday/nupkg /p:Version=${{ steps.get_version.outputs.new_version }}
+
+    - name: Get packed nupkg filename
+      id: get_nupkg
+      shell: bash
+      run: |
+        PKG_FILE=$(ls Friday/nupkg/*.nupkg | head -n 1)
+        echo "nupkg_file=$PKG_FILE" >> $GITHUB_OUTPUT
 
     - name: List nupkg files
       run: dir Friday/nupkg
 
     - name: Publish NuGet package
-      run: dotnet nuget push Friday/nupkg/FridayMediator.${{ steps.version.outputs.new_version }}.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      shell: bash
+      run: |
+        dotnet nuget push "${{ steps.get_nupkg.outputs.nupkg_file }}" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
