@@ -33,7 +33,7 @@ jobs:
       run: |
         PACKAGE_NAME="FridayMediator"
         # Get latest version from NuGet
-        RESPONSE=$(curl -s -w "%{http_code}" https://api.nuget.org/v3-flatcontainer/${PACKAGE_NAME,,}/index.json)
+        RESPONSE=$(curl -s -w "%{http_code}" https://api.nuget.org/v3-flatcontainer/fridaymediator/index.json)
         BODY=$(echo "$RESPONSE" | head -c -3)
         STATUS=$(echo "$RESPONSE" | tail -c 3)
         if [ "$STATUS" = "200" ]; then
