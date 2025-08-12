@@ -6,7 +6,7 @@
     <LangVersion>latest</LangVersion>
     <!-- NuGet package metadata -->
     <PackageId>FridayMediator</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.0.3</Version>
     <Authors>Muheer Baig</Authors>
     <Company>Code</Company>
     <Description>A lightweight Mediator implementation for .NET, inspired by Tony Stark's Friday AI.
