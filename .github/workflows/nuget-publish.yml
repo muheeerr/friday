@@ -1,0 +1,36 @@
+# This workflow will build, pack, and publish your .NET library to NuGet.org
+# Save your NuGet API key as a GitHub secret named NUGET_API_KEY
+
+name: Publish NuGet Package
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Friday/Friday.csproj
+
+      - name: Build
+        run: dotnet build Friday/Friday.csproj --configuration Release --no-restore
+
+      - name: Pack
+        run: dotnet pack Friday/Friday.csproj --configuration Release --no-build --output ./nupkg
+
+      - name: Publish to NuGet.org
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: dotnet nuget push ./nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
