@@ -131,7 +131,7 @@ public class Friday : IFriday
                     _logger.LogError(ex, "Error occurred in handler {HandlerType} for notification {NotificationType}", handlerInstance?.GetType().Name,
                         notificationType.Name);
                 }
-            }, cancellationToken);//
+            }, cancellationToken);
 
             if (!fireAndForget)
                 tasks.Add(handlerTask);
