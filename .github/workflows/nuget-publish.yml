@@ -38,8 +38,12 @@ jobs:
         NEW_VERSION="$major.$minor.$patch"
         echo $NEW_VERSION > $VERSION_FILE
         echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
     - name: Pack NuGet package
       run: dotnet pack Friday/Friday.csproj --configuration Release --no-build --output Friday/nupkg /p:PackageVersion=${{ steps.version.outputs.new_version }}
+
+    - name: List nupkg files
+      run: dir Friday/nupkg
 
     - name: Publish NuGet package
       run: dotnet nuget push Friday/nupkg/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
