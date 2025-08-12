@@ -37,6 +37,53 @@ var mediator = serviceProvider.GetRequiredService<IFriday>();
 var response = await mediator.Send(new PingRequest());
 ```
 
+# Example: Using Notifications and Queries
+
+Below is an example of how to use a notification and a query with Friday Mediator:
+
+```csharp
+// Notification definition and handler
+public class Notification
+{
+    public record GetDateNotification(string Message) : INotification;
+
+    public class GetDateNotificationHandler : INotificationHandler<GetDateNotification>
+    {
+        public async Task Handle(GetDateNotification notification, CancellationToken cancellationToken)
+        {
+            Console.WriteLine($"Date notification received: {notification.Message} at {DateTime.Now}");
+            await Task.Delay(2000, cancellationToken);
+            Console.WriteLine($"Date notification processed at {DateTime.Now}");
+        }
+    }
+}
+
+// Query definition and handler
+public record GetDateQuery : IRequest<DateTime>;
+
+public class GetDateQueryHandler(IFriday mediator) : IRequestHandler<GetDateQuery, DateTime>
+{
+    private readonly IFriday _mediator = mediator;
+
+    public async Task<DateTime> Handle(GetDateQuery request, CancellationToken cancellationToken)
+    {
+        await _mediator.Publish(new Notification.GetDateNotification("GetDateQuery executed"), cancellationToken);
+        Console.WriteLine($"GetDateQueryHandler executed at: {DateTime.Now}");
+        return DateTime.Now;
+    }
+}
+
+// Minimal API endpoint example
+app.MapGet("/api/date", async (IFriday mediator, CancellationToken cancellationToken) =>
+{
+    var date = await mediator.Send(new GetDateQuery(), cancellationToken);
+    return Results.Ok(date);
+});
+```
+
+This demonstrates how to define and handle notifications and queries, and how to expose them via a minimal API endpoint.
+
+
 ## Pipeline Behaviors
 Implement `IPipelineBehavior<TRequest, TResponse>` for cross-cutting logic (logging, validation, etc).
 
