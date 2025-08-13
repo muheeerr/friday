@@ -1,0 +1,94 @@
+# Azure DevOps Pipeline for Building and Publishing NuGet Package with Auto-Incremented Version
+
+
+# Trigger on commit and PR completion to main branch
+trigger:
+  branches:
+    include:
+      - main
+
+pr:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: 'Friday.sln'
+  project: 'Friday/Friday.csproj'
+  packageName: 'FridayMediator'
+  buildConfiguration: 'Release'
+
+steps:
+- task: UseDotNet@2
+  displayName: 'Install .NET SDK'
+  inputs:
+    packageType: 'sdk'
+    version: '8.0.x'
+
+- checkout: self
+
+- task: PowerShell@2
+  displayName: 'Get Latest NuGet Version and Set New Version'
+  inputs:
+    targetType: 'inline'
+    script: |
+      $ErrorActionPreference = 'Stop'
+      $packageName = '$(packageName)'
+      $url = "https://api.nuget.org/v3-flatcontainer/$($packageName.ToLower())/index.json"
+      try {
+        $response = Invoke-WebRequest -Uri $url -UseBasicParsing
+        $json = $response.Content | ConvertFrom-Json
+        $latest = $json.versions[-1]
+        if ($latest) {
+          $parts = $latest -split '\.'
+          $major = [int]$parts[0]
+          $minor = [int]$parts[1]
+          $patch = [int]$parts[2] + 1
+          $newVersion = "$major.$minor.$patch"
+        } else {
+          $newVersion = "1.0.0"
+        }
+      } catch {
+        $newVersion = "1.0.0"
+      }
+      Write-Host "##vso[task.setvariable variable=packageVersion]$newVersion"
+      Write-Host "New version: $newVersion"
+
+- task: DotNetCoreCLI@2
+  displayName: 'Restore dependencies'
+  inputs:
+    command: 'restore'
+    projects: '$(project)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Build'
+  inputs:
+    command: 'build'
+    projects: '$(project)'
+    arguments: '--configuration $(buildConfiguration)'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Pack NuGet package'
+  inputs:
+    command: 'pack'
+    packagesToPack: '$(project)'
+    versioningScheme: 'off'
+    arguments: '--configuration $(buildConfiguration) /p:PackageVersion=$(packageVersion)'
+    outputDir: '$(Build.ArtifactStagingDirectory)'
+
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifacts'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'nuget'
+
+- task: NuGetCommand@2
+  displayName: 'Push NuGet package'
+  inputs:
+    command: 'push'
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+    nuGetFeedType: 'external'
+    publishFeedCredentials: 'NUGET_API_KEY' # Set this as a pipeline secret variable
