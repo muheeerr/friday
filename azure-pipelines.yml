@@ -85,10 +85,11 @@ steps:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'nuget'
 
-- task: NuGetCommand@2
-  displayName: 'Push NuGet package'
+
+# Use dotnet CLI to push NuGet package to nuget.org
+- task: DotNetCoreCLI@2
+  displayName: 'Push NuGet package (dotnet CLI)'
   inputs:
-    command: 'push'
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
-    nuGetFeedType: 'external'
-    publishFeedCredentials: 'NUGET_API_KEY' # Set this as a pipeline secret variable
+    command: 'custom'
+    custom: 'nuget'
+    arguments: 'push $(Build.ArtifactStagingDirectory)/*.nupkg --api-key $(NUGET_API_KEY) --source https://api.nuget.org/v3/index.json --skip-duplicate'
